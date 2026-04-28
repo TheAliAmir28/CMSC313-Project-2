@@ -8,72 +8,66 @@ newline:
 newline_len = . - newline
 
 .section .bss
-    .lcomm input_buffer, 32
-    .lcomm output_buffer, 32
+    .lcomm output_buffer, 32    #space to build the output number as a string
 
 .section .text
 .global _start
 
 _start:
-    mov $0, %rax
-    mov $0, %rdi
-    mov $input_buffer, %rsi
-    mov $32, %rdx
-    syscall
+    mov (%rsp), %rax
+    cmp $2, %rax     #Check that we have at least one argument
+    jl exit_program  # if we don't, then just exit
 
-    mov %rax, %r8
+    mov 16(%rsp), %rsi  #rsi points to to argv[1], the input string
 
-    xor %rbx, %rbx
-    mov $input_buffer, %rsi
+    xor %rbx, %rbx   #Will store the final integer (Currently 0)
 
-parse_loop:
-    cmp $0, %r8
-    je parse_done
-
+# We walk through each character and build the number manually.
+convert_input:
     movzbq (%rsi), %rcx
 
-    cmp $10, %rcx
-    je parse_done
+    cmp $0, %rcx     #Check if reached end of string
+    je double_number  #If so, then done parsing
 
-    cmp $13, %rcx
-    je parse_done
-
-    sub $'0', %rcx
+    sub $'0', %rcx    #Convert the ascii to digit
 
     imul $10, %rbx, %rbx
     add %rcx, %rbx
 
     inc %rsi
-    dec %r8
-    jmp parse_loop
+    jmp convert_input
 
-parse_done:
-    add %rbx, %rbx
+double_number:
+    add %rbx, %rbx       # rbx = rbx * 2 (doubling)
 
+# Print: The double is:
+print_message:
     mov $1, %rax
     mov $1, %rdi
-    mov $message, %rsi
-    mov $message_len, %rdx
+    mov $message, %rsi        #Pointer to message
+    mov $message_len, %rdx    #Message length
     syscall
 
+#Integer to string. We convert the number back to string to print it
+prepare_output:
     mov $output_buffer, %r9
-    add $31, %r9
+    add $31, %r9     #Start from end as we build backwards
     movb $0, (%r9)
 
-    mov %rbx, %rax
+    mov %rbx, %rax    #rax = number to convert
 
     cmp $0, %rax
-    jne convert_loop_start
-
+    jne convert_output
+        #Special case if number is 0
     dec %r9
     movb $'0', (%r9)
     mov $1, %r10
     jmp print_number
 
-convert_loop_start:
+convert_output:
     xor %r10, %r10
 
-convert_loop:
+convert_digits:
     xor %rdx, %rdx
     mov $10, %rcx
     div %rcx
@@ -81,24 +75,26 @@ convert_loop:
     add $'0', %dl
     dec %r9
     mov %dl, (%r9)
-    inc %r10
+    inc %r10     #Increase length
 
     cmp $0, %rax
-    jne convert_loop
+    jne convert_digits
 
 print_number:
     mov $1, %rax
     mov $1, %rdi
     mov %r9, %rsi
-    mov %r10, %rdx
+    mov %r10, %rdx    #Number of characters
     syscall
 
+print_newline:
     mov $1, %rax
     mov $1, %rdi
     mov $newline, %rsi
     mov $newline_len, %rdx
     syscall
 
+exit_program:
     mov $60, %rax
-    xor %rdi, %rdi
+    xor %rdi, %rdi    #exit code 0
     syscall
