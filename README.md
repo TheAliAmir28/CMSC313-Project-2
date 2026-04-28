@@ -1,7 +1,11 @@
-# To initiate the program, do the following:
+Compilation Instructions
 
-## Compile using the command
-gcc -nostdlib -no-pie double_number.s -o double_number
+Run the following commands in the terminal:
 
-## Then run using the command
-./double_number
+as double_number.s -o double_number.o
+ld double_number.o -o double_number
+Execution Instructions
+
+Run the program with a number as a command-line argument:
+
+./double_number 13
